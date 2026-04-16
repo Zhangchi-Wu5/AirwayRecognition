@@ -99,6 +99,37 @@ python -m scripts.build_demo_notebook
 pytest tests/test_data_split.py -v
 ```
 
+## 常见问题
+
+### 1. `ImportError: libGL.so.1: cannot open shared object file`
+在 Linux 服务器上跑 Grad-CAM 时报这个错。原因：`grad-cam` 依赖的 `opencv-python` 需要系统 GUI 库。
+
+**修复**（已集成在 `setup_env.sh` 里）：
+```bash
+pip uninstall -y opencv-python
+pip install opencv-python-headless
+```
+
+### 2. matplotlib 图表中文显示为方框（tofu）
+服务器上没有中文字体。
+
+**修复**（Ubuntu/Debian）：
+```bash
+sudo apt install fonts-noto-cjk
+# 然后清 matplotlib 字体缓存
+python -c "import matplotlib; import os; cache=matplotlib.get_cachedir(); [os.remove(os.path.join(cache,f)) for f in os.listdir(cache) if f.startswith('fontlist')]"
+```
+
+或 CentOS/RHEL：
+```bash
+sudo yum install google-noto-sans-cjk-fonts
+```
+
+重启 notebook kernel 后，调用 `setup_chinese_font()` 会自动选择可用字体。
+
+### 3. `ModuleNotFoundError: No module named 'src'` 在 notebook 里
+notebook 首次运行时，section 2 会把 `PROJECT_ROOT` 加到 `sys.path`。如果你跳过了 section 2 直接跑后面的 cell，会报这个错。解决：**从 section 1 依次运行所有 cell**。
+
 ## 设计与实施文档
 
 - 设计文档：`docs/specs/2026-04-16-bronchoscopy-classifier-design.md`

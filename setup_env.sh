@@ -81,6 +81,42 @@ pip install \
     "nbformat>=5.9.0" \
     "pytest>=7.4.0"
 
+# ---- 5b. 替换 opencv-python 为 headless 版 ----
+# grad-cam 默认依赖 opencv-python，在无 X Server 的 Linux 服务器上会报 libGL.so.1 缺失。
+# 换成 opencv-python-headless 解决这个问题。
+echo ""
+echo "[INFO] 切换到 opencv-python-headless（避免 libGL.so.1 依赖）..."
+pip uninstall -y opencv-python 2>/dev/null || true
+pip install "opencv-python-headless>=4.8.0"
+
+# ---- 5c. 安装中文字体（Linux 有 apt/yum 时） ----
+if [[ "$(uname)" == "Linux" ]]; then
+    echo ""
+    echo "[INFO] 尝试安装中文字体（matplotlib 需要）..."
+    if command -v apt-get &>/dev/null; then
+        if command -v sudo &>/dev/null && sudo -n true 2>/dev/null; then
+            sudo apt-get install -y fonts-noto-cjk 2>/dev/null \
+                && echo "[INFO] fonts-noto-cjk 已安装" \
+                || echo "[WARN] fonts-noto-cjk 安装失败，图表中文可能乱码"
+        elif [[ "$EUID" -eq 0 ]]; then
+            apt-get install -y fonts-noto-cjk 2>/dev/null \
+                && echo "[INFO] fonts-noto-cjk 已安装" \
+                || echo "[WARN] fonts-noto-cjk 安装失败，图表中文可能乱码"
+        else
+            echo "[WARN] 无 sudo 权限，跳过字体安装。"
+            echo "       如需中文图表，请手动运行: sudo apt install fonts-noto-cjk"
+        fi
+    elif command -v yum &>/dev/null; then
+        if command -v sudo &>/dev/null && sudo -n true 2>/dev/null; then
+            sudo yum install -y google-noto-sans-cjk-fonts 2>/dev/null || true
+        elif [[ "$EUID" -eq 0 ]]; then
+            yum install -y google-noto-sans-cjk-fonts 2>/dev/null || true
+        fi
+    fi
+    # 清 matplotlib 字体缓存，让它重新扫描
+    python -c "import matplotlib; import shutil, os; cache=matplotlib.get_cachedir(); [os.remove(os.path.join(cache,f)) for f in os.listdir(cache) if f.startswith('fontlist')]" 2>/dev/null || true
+fi
+
 # ---- 6. 注册 Jupyter kernel ----
 echo ""
 echo "[INFO] 注册 Jupyter kernel: $ENV_NAME"

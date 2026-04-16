@@ -69,7 +69,13 @@ from src.data import (
 from src.models import build_resnet50, count_trainable_params
 from src.train import set_seed, train_two_stage
 from src.evaluate import collect_predictions, compute_metrics
-from src.viz import plot_training_curves, plot_confusion_matrix, make_gradcam_overlay
+from src.viz import (
+    plot_training_curves, plot_confusion_matrix, make_gradcam_overlay,
+    setup_chinese_font,
+)
+
+# 配置 matplotlib 中文字体（服务器上没字体会打印安装指引）
+setup_chinese_font()
 
 # 固定所有随机种子（Python / numpy / torch / CUDA）
 set_seed(42)

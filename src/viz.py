@@ -3,10 +3,53 @@ from pathlib import Path
 from typing import Optional
 
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 import numpy as np
 import seaborn as sns
 import torch
 from PIL import Image
+
+
+# 按优先级尝试的 CJK 字体列表（跨 Linux / macOS / Windows）
+_CJK_FONT_CANDIDATES = [
+    "Noto Sans CJK SC",      # Google Noto（Linux 常见）
+    "Noto Sans CJK JP",
+    "Source Han Sans SC",    # Adobe 思源黑体
+    "Source Han Sans CN",
+    "WenQuanYi Zen Hei",     # 文泉驿（Linux）
+    "WenQuanYi Micro Hei",
+    "Microsoft YaHei",       # Windows
+    "SimHei",                # Windows
+    "PingFang SC",           # macOS
+    "Heiti SC",              # macOS
+    "STHeiti",               # macOS
+    "Arial Unicode MS",      # macOS 兜底
+]
+
+
+def setup_chinese_font(verbose: bool = True) -> Optional[str]:
+    """配置 matplotlib 使用中文字体。
+
+    按优先级尝试 `_CJK_FONT_CANDIDATES`，找到就设置并返回字体名。
+    如果都没有，打印安装提示并返回 None（图表会回退到英文）。
+    """
+    available_fonts = {f.name for f in fm.fontManager.ttflist}
+    for font_name in _CJK_FONT_CANDIDATES:
+        if font_name in available_fonts:
+            plt.rcParams["font.family"] = [font_name, "sans-serif"]
+            plt.rcParams["axes.unicode_minus"] = False  # 负号正常显示
+            if verbose:
+                print(f"[viz] 中文字体已配置: {font_name}")
+            return font_name
+
+    # 没有找到任何 CJK 字体
+    plt.rcParams["axes.unicode_minus"] = False
+    if verbose:
+        print("[viz] 警告: 未找到中文字体，图表中文会显示为 □□□。")
+        print("      Linux (Debian/Ubuntu): sudo apt install fonts-noto-cjk")
+        print("      Linux (CentOS/RHEL):  sudo yum install google-noto-sans-cjk-fonts")
+        print("      或在 Python 里运行: matplotlib.font_manager.fontManager.addfont(...)")
+    return None
 
 
 def plot_training_curves(history: dict, output_path: Path) -> None:
