@@ -31,10 +31,19 @@ AirwayRecognition/
 
 ## 快速开始
 
-### 1. 环境准备
+### 1. 环境准备（推荐 Conda）
 
 ```bash
-# 建议 Python 3.10+，强烈推荐用虚拟环境
+# 一键创建 conda 环境 + 安装所有依赖 + 跑测试验证
+bash setup_env.sh
+
+# 激活环境
+conda activate airway
+```
+
+如果不用 Conda，也可以手动 venv：
+
+```bash
 python -m venv venv
 source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
