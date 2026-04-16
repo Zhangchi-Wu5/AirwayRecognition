@@ -1,4 +1,5 @@
 """Data loading, manifest generation, and patient-level splitting."""
+import random
 import re
 from pathlib import Path
 from typing import Optional
@@ -59,3 +60,38 @@ def build_manifest(dataset_dir: Path) -> pd.DataFrame:
         if len(skipped) > 10:
             print(f"  ... and {len(skipped) - 10} more")
     return pd.DataFrame(rows)
+
+
+def split_by_patient(
+    manifest: pd.DataFrame,
+    train_ratio: float = 0.70,
+    val_ratio: float = 0.15,
+    seed: int = 42,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Split manifest into train/val/test by patient_id.
+
+    All images from the same patient go to the same split.
+    test_ratio is inferred as 1 - train_ratio - val_ratio.
+
+    Returns: (train_df, val_df, test_df)
+    """
+    assert 0 < train_ratio < 1, "train_ratio must be in (0, 1)"
+    assert 0 < val_ratio < 1, "val_ratio must be in (0, 1)"
+    assert train_ratio + val_ratio < 1, "train + val must leave room for test"
+
+    patient_ids = sorted(manifest["patient_id"].unique())
+    rng = random.Random(seed)
+    rng.shuffle(patient_ids)
+
+    n_total = len(patient_ids)
+    n_train = int(n_total * train_ratio)
+    n_val = int(n_total * val_ratio)
+
+    train_patients = set(patient_ids[:n_train])
+    val_patients = set(patient_ids[n_train:n_train + n_val])
+    test_patients = set(patient_ids[n_train + n_val:])
+
+    train_df = manifest[manifest["patient_id"].isin(train_patients)].reset_index(drop=True)
+    val_df = manifest[manifest["patient_id"].isin(val_patients)].reset_index(drop=True)
+    test_df = manifest[manifest["patient_id"].isin(test_patients)].reset_index(drop=True)
+    return train_df, val_df, test_df

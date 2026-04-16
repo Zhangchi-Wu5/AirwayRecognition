@@ -1,0 +1,100 @@
+patient_id,label,label_id,path
+0000043000,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000043000lt.png
+0000043000,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000043000yz.png
+0000043000,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000043000zz.png
+0000070950,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000070950lt.png
+0000070950,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000070950yz.png
+0000122895,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000122895lt.png
+0000122895,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000122895yz.png
+0000122895,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000122895zz.png
+0000642182,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000642182lt.png
+0000642182,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000642182yz.png
+0000642182,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000642182zz.png
+0000651856,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000651856lt.png
+0000651856,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000651856yz.png
+0000651856,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000651856zz.png
+0000665960,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000665960lt.png
+0000665960,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000665960yz.png
+0000665960,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000665960zz.png
+0000687374,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000687374lt.png
+0000687374,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000687374yz.png
+0000687374,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000687374zz.png
+0000798808,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000798808lt.png
+0000798808,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000798808yz.png
+0000798808,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0000798808zz.png
+0001162128,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001162128 lt.png
+0001162128,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001162128 yz.png
+0001162128,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001162128 zz.png
+0001321280,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001321280lt.png
+0001321280,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001321280yz.png
+0001321280,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001321280zz.png
+0001329363,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001329363lt.png
+0001329363,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001329363yz.png
+0001329363,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001329363zz.png
+0001340941,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001340941 lt.png
+0001340941,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001340941 yz.png
+0001340941,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001340941 zz.png
+0001406318,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001406318lt.png
+0001406318,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001406318yz.png
+0001406318,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001406318zz.png
+0001560645,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001560645lt.png
+0001560645,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001560645yz.png
+0001560645,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001560645zz.png
+0001720416,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001720416lt.png
+0001720416,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001720416yz.png
+0001720416,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0001720416zz.png
+0002395873,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0002395873lt.png
+0002395873,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0002395873yz.png
+0002395873,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0002395873zz.png
+0002402494,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0002402494lt.png
+0002402494,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0002402494yz.png
+0002402494,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0002402494zz.png
+0002505122,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0002505122lt.png
+0002505122,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0002505122yz.png
+0002505122,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0002505122zz.png
+0003064137,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0003064137 lt.png
+0003064137,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0003064137 yz.png
+0003064137,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0003064137 zz.png
+0004543760,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0004543760lt.png
+0004543760,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0004543760yz.png
+0004650060,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0004650060lt.png
+0004650060,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0004650060yz.png
+0004650060,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0004650060zz.png
+0013194395,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0013194395 lt.png
+0013194395,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0013194395 yz.png
+0013194395,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0013194395 zz.png
+0013272588,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0013272588lt.png
+0013272588,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0013272588yz.png
+0013272588,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0013272588zz.png
+0013306471,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0013306471lt.png
+0013306471,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0013306471yz.png
+0013306471,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0013306471zz.png
+0014096850,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0014096850lt.png
+0014096850,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0014096850yz.png
+0014096850,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0014096850zz.png
+0014267959,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0014267959lt.png
+0014267959,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0014267959yz.png
+0014267959,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0014267959zz.png
+0014946792,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0014946792lt.png
+0014946792,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0014946792yz.png
+0014946792,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0014946792zz.png
+0015079702,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015079702lt.png
+0015079702,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015079702yz.png
+0015079702,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015079702zz.png
+0015241357,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015241357lt.png
+0015241357,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015241357yz.png
+0015263537,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015263537  lt.png
+0015263537,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015263537  yz.png
+0015263537,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015263537  zz.png
+0015264656,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015264656lt.png
+0015264656,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015264656yz.png
+0015264656,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015264656zz.png
+0015317000,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015317000lt.png
+0015317000,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015317000yz.png
+0015317000,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015317000zz.png
+0015338105,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015338105lt.png
+0015338105,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015338105yz.png
+0015338105,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015338105zz.png
+0015344736,lt,0,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015344736lt.png
+0015344736,yz,1,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015344736yz.png
+0015344736,zz,2,/Users/wuzhangchi/PycharmProjects/AirwayRecognition/dataset/0015344736zz.png
