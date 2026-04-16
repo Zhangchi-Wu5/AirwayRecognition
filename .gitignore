@@ -1,2 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# 数据集（737MB，不入 git；克隆者另行获取）
 dataset/
+
+# ML 产物（大文件/可重新生成，不入 git）
+checkpoints/*.pt
+checkpoints/*.pth
+outputs/*.png
+outputs/gradcam_examples/*.png
+
+# IDE
+.idea/
+.vscode/
+*.swp
 .DS_Store
+
+# 保留占位文件
+!checkpoints/.gitkeep
+!outputs/.gitkeep
+!outputs/gradcam_examples/.gitkeep
