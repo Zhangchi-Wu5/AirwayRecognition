@@ -1,6 +1,12 @@
 """Visualization: training curves, confusion matrix, Grad-CAM overlays."""
+from collections import deque
+import os
 from pathlib import Path
+import tempfile
 from typing import Optional
+
+os.environ.setdefault("MPLCONFIGDIR", str(Path(tempfile.gettempdir()) / "airway_matplotlib"))
+os.environ.setdefault("XDG_CACHE_HOME", str(Path(tempfile.gettempdir()) / "airway_cache"))
 
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
@@ -109,6 +115,105 @@ def plot_confusion_matrix(
     plt.close(fig)
 
 
+def detect_dark_border_mask(
+    image: Image.Image | np.ndarray,
+    dark_threshold: int = 24,
+) -> np.ndarray:
+    """Detect edge-connected dark non-image regions such as scope black borders.
+
+    Returns a boolean HxW mask. Only dark pixels connected to the image edge are
+    included, so dark anatomical cavities in the middle are not marked by this
+    rule.
+    """
+    rgb = _to_rgb_array(image)
+    luminance = (
+        0.299 * rgb[..., 0]
+        + 0.587 * rgb[..., 1]
+        + 0.114 * rgb[..., 2]
+    )
+    dark = luminance <= dark_threshold
+    return _edge_connected_mask(dark)
+
+
+def detect_specular_highlight_mask(
+    image: Image.Image | np.ndarray,
+    bright_threshold: int = 235,
+    color_spread_threshold: int = 35,
+    min_area: int = 4,
+) -> np.ndarray:
+    """Detect near-white specular highlights from bronchoscopy illumination.
+
+    The rule targets very bright pixels whose RGB channels are close together.
+    This intentionally detects strong white glare, not all bright tissue.
+    """
+    rgb = _to_rgb_array(image)
+    max_channel = rgb.max(axis=2)
+    min_channel = rgb.min(axis=2)
+    mask = (
+        (max_channel >= bright_threshold)
+        & ((max_channel - min_channel) <= color_spread_threshold)
+    )
+    if min_area > 1:
+        mask = _remove_small_components(mask, min_area=min_area)
+    return mask
+
+
+def build_pseudo_feature_masks(
+    image: Image.Image | np.ndarray,
+    dark_threshold: int = 24,
+    bright_threshold: int = 235,
+    color_spread_threshold: int = 35,
+    min_highlight_area: int = 4,
+) -> dict[str, np.ndarray]:
+    """Build rule-based masks for easy pseudo-features.
+
+    The returned dictionary contains dark border, specular highlight, and their
+    union as boolean HxW masks.
+    """
+    dark_border = detect_dark_border_mask(image, dark_threshold=dark_threshold)
+    specular_highlight = detect_specular_highlight_mask(
+        image,
+        bright_threshold=bright_threshold,
+        color_spread_threshold=color_spread_threshold,
+        min_area=min_highlight_area,
+    )
+    return {
+        "dark_border": dark_border,
+        "specular_highlight": specular_highlight,
+        "combined": dark_border | specular_highlight,
+    }
+
+
+def pseudo_feature_attention_score(heatmap: np.ndarray, mask: np.ndarray) -> float:
+    """Return the fraction of heatmap response falling inside a pseudo-feature mask."""
+    heatmap = np.asarray(heatmap, dtype=np.float32)
+    mask = np.asarray(mask, dtype=bool)
+    if heatmap.shape != mask.shape:
+        raise ValueError(f"heatmap and mask shapes differ: {heatmap.shape} vs {mask.shape}")
+    total = float(np.maximum(heatmap, 0).sum())
+    if total == 0:
+        return 0.0
+    return float(np.maximum(heatmap, 0)[mask].sum() / total)
+
+
+def make_gradcam_heatmap(
+    model: torch.nn.Module,
+    image_tensor: torch.Tensor,
+    target_class: int,
+    target_layer,
+    device: str = "cuda",
+) -> np.ndarray:
+    """Generate a Grad-CAM grayscale heatmap for a single preprocessed image."""
+    from pytorch_grad_cam import GradCAM
+    from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
+
+    model.eval()
+    cam = GradCAM(model=model, target_layers=[target_layer])
+    input_tensor = image_tensor.unsqueeze(0).to(device)
+    targets = [ClassifierOutputTarget(target_class)]
+    return cam(input_tensor=input_tensor, targets=targets)[0]
+
+
 def make_gradcam_overlay(
     model: torch.nn.Module,
     image_tensor: torch.Tensor,
@@ -130,16 +235,78 @@ def make_gradcam_overlay(
     Returns:
         H×W×3 uint8 numpy array with Grad-CAM overlaid.
     """
-    from pytorch_grad_cam import GradCAM
-    from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
     from pytorch_grad_cam.utils.image import show_cam_on_image
 
-    model.eval()
-    cam = GradCAM(model=model, target_layers=[target_layer])
-    input_tensor = image_tensor.unsqueeze(0).to(device)
-    targets = [ClassifierOutputTarget(target_class)]
-    grayscale_cam = cam(input_tensor=input_tensor, targets=targets)[0]  # H×W
-
+    grayscale_cam = make_gradcam_heatmap(
+        model=model,
+        image_tensor=image_tensor,
+        target_class=target_class,
+        target_layer=target_layer,
+        device=device,
+    )
     rgb = np.asarray(original_pil.resize((224, 224))).astype(np.float32) / 255.0
     overlay = show_cam_on_image(rgb, grayscale_cam, use_rgb=True)
     return overlay
+
+
+def _to_rgb_array(image: Image.Image | np.ndarray) -> np.ndarray:
+    if isinstance(image, Image.Image):
+        return np.asarray(image.convert("RGB"), dtype=np.uint8)
+    array = np.asarray(image)
+    if array.ndim != 3 or array.shape[2] != 3:
+        raise ValueError("image must be an RGB image with shape HxWx3")
+    return array.astype(np.uint8, copy=False)
+
+
+def _edge_connected_mask(mask: np.ndarray) -> np.ndarray:
+    mask = np.asarray(mask, dtype=bool)
+    h, w = mask.shape
+    visited = np.zeros((h, w), dtype=bool)
+    queue: deque[tuple[int, int]] = deque()
+
+    for x in range(w):
+        for y in (0, h - 1):
+            if mask[y, x] and not visited[y, x]:
+                visited[y, x] = True
+                queue.append((y, x))
+    for y in range(h):
+        for x in (0, w - 1):
+            if mask[y, x] and not visited[y, x]:
+                visited[y, x] = True
+                queue.append((y, x))
+
+    while queue:
+        y, x = queue.popleft()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < h and 0 <= nx < w and mask[ny, nx] and not visited[ny, nx]:
+                visited[ny, nx] = True
+                queue.append((ny, nx))
+    return visited
+
+
+def _remove_small_components(mask: np.ndarray, min_area: int) -> np.ndarray:
+    mask = np.asarray(mask, dtype=bool)
+    h, w = mask.shape
+    visited = np.zeros((h, w), dtype=bool)
+    output = np.zeros((h, w), dtype=bool)
+
+    for y in range(h):
+        for x in range(w):
+            if not mask[y, x] or visited[y, x]:
+                continue
+            component = []
+            queue: deque[tuple[int, int]] = deque([(y, x)])
+            visited[y, x] = True
+            while queue:
+                cy, cx = queue.popleft()
+                component.append((cy, cx))
+                for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    ny, nx = cy + dy, cx + dx
+                    if 0 <= ny < h and 0 <= nx < w and mask[ny, nx] and not visited[ny, nx]:
+                        visited[ny, nx] = True
+                        queue.append((ny, nx))
+            if len(component) >= min_area:
+                ys, xs = zip(*component)
+                output[ys, xs] = True
+    return output
