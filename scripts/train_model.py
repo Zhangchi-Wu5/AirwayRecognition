@@ -20,6 +20,7 @@ from src.data import (
     get_train_transforms,
     split_by_patient,
 )
+from src.attention import build_attention_resnet50
 from src.evaluate import collect_predictions, compute_metrics
 from src.models import build_resnet50
 from src.train import set_seed, train_two_stage
@@ -47,6 +48,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dropout", type=float, default=0.3)
     parser.add_argument("--no-pretrained", action="store_true", help="Disable ImageNet pretrained weights.")
     parser.add_argument("--device", default=None, help="Defaults to cuda when available, otherwise cpu.")
+    # Anatomy-attention model + regularization (no manual annotation required).
+    parser.add_argument("--attention", action="store_true",
+                        help="Use the anatomy-attention ResNet-50 (in-model spatial attention + fusion).")
+    parser.add_argument("--reg", action="store_true",
+                        help="Enable attention regularization (implies --attention).")
+    parser.add_argument("--lambda-eq", type=float, default=0.1, help="Weight for attention equivariance loss.")
+    parser.add_argument("--lambda-pf", type=float, default=0.1, help="Weight for pseudo-feature suppression loss.")
+    parser.add_argument("--max-angle", type=float, default=15.0, help="Max rotation (deg) for equivariance loss.")
+    parser.add_argument("--mask-size", type=int, default=56, help="Resolution for pseudo-feature masks.")
     return parser.parse_args()
 
 
@@ -72,7 +82,12 @@ def main() -> None:
     for name, df in [("train", train_df), ("val", val_df), ("test", test_df)]:
         print(f"{name}: {len(df)} images, {df['patient_id'].nunique()} patients, labels={dict(df['label'].value_counts())}")
 
-    train_ds = BronchoscopyDataset(train_df, transform=get_train_transforms())
+    use_attention = args.attention or args.reg
+    use_reg = args.reg
+    train_ds = BronchoscopyDataset(
+        train_df, transform=get_train_transforms(),
+        return_pseudo_mask=use_reg, mask_size=args.mask_size,
+    )
     val_ds = BronchoscopyDataset(val_df, transform=get_eval_transforms())
     test_ds = BronchoscopyDataset(test_df, transform=get_eval_transforms())
     pin_memory = device == "cuda"
@@ -98,7 +113,18 @@ def main() -> None:
         pin_memory=pin_memory,
     )
 
-    model = build_resnet50(num_classes=3, pretrained=not args.no_pretrained, dropout=args.dropout).to(device)
+    if use_attention:
+        model = build_attention_resnet50(num_classes=3, pretrained=not args.no_pretrained, dropout=args.dropout)
+        print(f"Model: AnatomyAttentionResNet50 (reg={'on' if use_reg else 'off'})")
+    else:
+        model = build_resnet50(num_classes=3, pretrained=not args.no_pretrained, dropout=args.dropout)
+        print("Model: ResNet50 (baseline)")
+    model = model.to(device)
+
+    reg = None
+    if use_reg:
+        reg = {"lambda_eq": args.lambda_eq, "lambda_pf": args.lambda_pf, "max_angle": args.max_angle}
+        print(f"Regularization: lambda_eq={args.lambda_eq} lambda_pf={args.lambda_pf} max_angle={args.max_angle}")
 
     def log_epoch(info: dict) -> None:
         print(
@@ -120,6 +146,7 @@ def main() -> None:
         early_stopping_patience=args.early_stopping_patience,
         checkpoint_path=args.checkpoint_path,
         on_epoch_end=log_epoch,
+        reg=reg,
     )
     print(f"Best val accuracy: {history['best_val_acc']:.4f}")
     print(f"Best checkpoint: {args.checkpoint_path}")

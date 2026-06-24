@@ -136,18 +136,35 @@ class BronchoscopyDataset(Dataset):
     """PyTorch Dataset that reads images listed in a manifest DataFrame.
 
     Expects columns: path, label_id.
+
+    When ``return_pseudo_mask`` is True, each item also returns a (1, mask_size,
+    mask_size) pseudo-feature mask aligned with the (augmented) image — used by the
+    pseudo-feature suppression loss. Validation/test loaders should keep it False.
     """
 
-    def __init__(self, manifest: pd.DataFrame, transform=None):
+    def __init__(
+        self,
+        manifest: pd.DataFrame,
+        transform=None,
+        return_pseudo_mask: bool = False,
+        mask_size: int = 56,
+    ):
         self.manifest = manifest.reset_index(drop=True)
         self.transform = transform
+        self.return_pseudo_mask = return_pseudo_mask
+        self.mask_size = mask_size
 
     def __len__(self) -> int:
         return len(self.manifest)
 
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
+    def __getitem__(self, idx: int):
         row = self.manifest.iloc[idx]
         image = Image.open(row["path"]).convert("RGB")
         if self.transform is not None:
             image = self.transform(image)
-        return image, int(row["label_id"])
+        label = int(row["label_id"])
+        if self.return_pseudo_mask:
+            from src.regularization import pseudo_mask_from_tensor
+            mask = pseudo_mask_from_tensor(image, IMAGENET_MEAN, IMAGENET_STD, self.mask_size)
+            return image, label, mask
+        return image, label

@@ -9,6 +9,22 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from src.models import freeze_backbone, unfreeze_all
+from src.regularization import equivariance_loss, pseudo_suppression_loss
+
+
+def _freeze_backbone(model: nn.Module) -> None:
+    """Freeze the backbone, preferring a model-provided method (attention model)."""
+    if hasattr(model, "freeze_backbone"):
+        model.freeze_backbone()
+    else:
+        freeze_backbone(model)
+
+
+def _unfreeze_all(model: nn.Module) -> None:
+    if hasattr(model, "unfreeze_all"):
+        model.unfreeze_all()
+    else:
+        unfreeze_all(model)
 
 
 def set_seed(seed: int = 42) -> None:
@@ -28,16 +44,38 @@ def train_one_epoch(
     optimizer: torch.optim.Optimizer,
     criterion: nn.Module,
     device: str = "cuda",
+    reg: Optional[dict] = None,
 ) -> tuple[float, float]:
-    """Train for one epoch; return (avg_loss, accuracy)."""
+    """Train for one epoch; return (avg_loss, accuracy).
+
+    If ``reg`` is provided (dict with ``lambda_eq``, ``lambda_pf``, ``max_angle``),
+    the model must support ``forward(x, return_attn=True)`` and the loader must yield
+    (images, labels, pseudo_mask) triples. Total loss = CE + lambda_pf * pseudo
+    suppression + lambda_eq * attention equivariance.
+    """
     model.train()
     total_loss, total_correct, total_count = 0.0, 0, 0
-    for images, labels in loader:
+    for batch in loader:
+        if reg is not None:
+            images, labels, masks = batch
+            masks = masks.to(device)
+        else:
+            images, labels = batch
         images = images.to(device)
         labels = labels.to(device)
         optimizer.zero_grad()
-        logits = model(images)
-        loss = criterion(logits, labels)
+        if reg is not None:
+            logits, attn = model(images, return_attn=True)
+            loss = criterion(logits, labels)
+            if reg.get("lambda_pf", 0.0) > 0:
+                loss = loss + reg["lambda_pf"] * pseudo_suppression_loss(attn, masks)
+            if reg.get("lambda_eq", 0.0) > 0:
+                loss = loss + reg["lambda_eq"] * equivariance_loss(
+                    model, images, attn, max_angle=reg.get("max_angle", 15.0)
+                )
+        else:
+            logits = model(images)
+            loss = criterion(logits, labels)
         loss.backward()
         optimizer.step()
         total_loss += loss.item() * images.size(0)
@@ -80,11 +118,14 @@ def train_two_stage(
     early_stopping_patience: int = 5,
     checkpoint_path: Optional[Path] = None,
     on_epoch_end: Optional[Callable[[dict], None]] = None,
+    reg: Optional[dict] = None,
 ) -> dict:
     """Run two-stage fine-tuning.
 
     Stage 1: Freeze backbone, train head for stage1_epochs.
     Stage 2: Unfreeze all, train for up to stage2_epochs with early stopping.
+
+    ``reg`` (optional) enables attention regularization — see ``train_one_epoch``.
 
     Returns: history dict with lists of per-epoch metrics.
     """
@@ -97,11 +138,11 @@ def train_two_stage(
     }
 
     # Stage 1: head only
-    freeze_backbone(model)
+    _freeze_backbone(model)
     trainable = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(trainable, lr=stage1_lr, weight_decay=weight_decay)
     for epoch in range(1, stage1_epochs + 1):
-        train_loss, train_acc = train_one_epoch(model, train_loader, optimizer, criterion, device)
+        train_loss, train_acc = train_one_epoch(model, train_loader, optimizer, criterion, device, reg=reg)
         val_loss, val_acc = validate(model, val_loader, criterion, device)
         _record(history, 1, epoch, train_loss, train_acc, val_loss, val_acc)
         if on_epoch_end:
@@ -109,13 +150,13 @@ def train_two_stage(
                           "train_acc": train_acc, "val_loss": val_loss, "val_acc": val_acc})
 
     # Stage 2: full network
-    unfreeze_all(model)
+    _unfreeze_all(model)
     optimizer = torch.optim.AdamW(model.parameters(), lr=stage2_lr, weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=stage2_epochs)
     best_val_acc = -1.0
     patience_counter = 0
     for epoch in range(1, stage2_epochs + 1):
-        train_loss, train_acc = train_one_epoch(model, train_loader, optimizer, criterion, device)
+        train_loss, train_acc = train_one_epoch(model, train_loader, optimizer, criterion, device, reg=reg)
         val_loss, val_acc = validate(model, val_loader, criterion, device)
         scheduler.step()
         _record(history, 2, epoch, train_loss, train_acc, val_loss, val_acc)

@@ -14,6 +14,7 @@ import pandas as pd
 import torch
 from PIL import Image
 
+from src.attention import build_attention_resnet50
 from src.data import get_eval_transforms, ID_TO_LABEL, LABEL_NAMES_CN
 from src.models import build_resnet50
 from src.viz import (
@@ -33,6 +34,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint-path", type=Path, default=PROJECT_ROOT / "checkpoints" / "best_model.pt")
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "outputs" / "pseudo_feature_audit")
     parser.add_argument("--device", default=None, help="Defaults to cuda when available, otherwise cpu.")
+    parser.add_argument("--attention", action="store_true",
+                        help="Load the anatomy-attention ResNet-50 (must match how the checkpoint was trained).")
     parser.add_argument("--risk-threshold", type=float, default=0.30)
     parser.add_argument("--max-samples", type=int, default=None, help="Optional cap for quick server smoke runs.")
     parser.add_argument("--save-top-k", type=int, default=12)
@@ -56,10 +59,16 @@ def main() -> None:
     samples_dir = out_dir / "sample_images"
     samples_dir.mkdir(parents=True, exist_ok=True)
 
-    model = build_resnet50(num_classes=3, pretrained=False, dropout=args.dropout).to(device)
-    model.load_state_dict(torch.load(args.checkpoint_path, map_location=device))
-    model.eval()
-    target_layer = model.layer4[-1]
+    if args.attention:
+        model = build_attention_resnet50(num_classes=3, pretrained=False, dropout=args.dropout).to(device)
+        model.load_state_dict(torch.load(args.checkpoint_path, map_location=device))
+        model.eval()
+        target_layer = model.gradcam_target_layer()
+    else:
+        model = build_resnet50(num_classes=3, pretrained=False, dropout=args.dropout).to(device)
+        model.load_state_dict(torch.load(args.checkpoint_path, map_location=device))
+        model.eval()
+        target_layer = model.layer4[-1]
     transform = get_eval_transforms()
 
     records = []
