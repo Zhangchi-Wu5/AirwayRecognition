@@ -64,8 +64,14 @@ def equivariance_loss(
     return (diff.flatten(1).sum(dim=1) / denom).mean()
 
 
-def pseudo_mask_from_tensor(img_tensor: torch.Tensor, mean, std, size: int = 56) -> torch.Tensor:
+def pseudo_mask_from_tensor(
+    img_tensor: torch.Tensor, mean, std, size: int = 56, kind: str = "combined"
+) -> torch.Tensor:
     """Build a (1,size,size) pseudo-feature mask from a *normalized* (3,H,W) image tensor.
+
+    ``kind`` selects which mask to return: ``"combined"`` (black border + highlight),
+    ``"specular_highlight"`` (highlights only — use this when the black border is
+    already removed by ``CropBlackBorder`` in preprocessing), or ``"dark_border"``.
 
     The mask is computed on the de-normalized image at low resolution so it aligns with
     exactly what the model sees (post-augmentation) and stays cheap inside the dataloader.
@@ -80,5 +86,5 @@ def pseudo_mask_from_tensor(img_tensor: torch.Tensor, mean, std, size: int = 56)
     arr = (denorm.permute(1, 2, 0).numpy() * 255).astype("uint8")
     pil = Image.fromarray(arr).resize((size, size))
     masks = build_pseudo_feature_masks(pil)
-    m = masks["combined"].astype("float32")
+    m = masks[kind].astype("float32")
     return torch.from_numpy(np.ascontiguousarray(m)).unsqueeze(0)

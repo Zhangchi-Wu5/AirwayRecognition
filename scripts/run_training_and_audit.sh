@@ -9,12 +9,19 @@ mkdir -p "$MPLCONFIGDIR" "$XDG_CACHE_HOME"
 
 python -m scripts.train_model "$@"
 
-# Forward --attention to the audit if the model was trained with the attention head,
-# so the checkpoint architecture matches when loading for Grad-CAM.
+# Forward the architecture/preprocessing-relevant flags to the audit so the checkpoint
+# architecture and image preprocessing match when loading for Grad-CAM.
 AUDIT_EXTRA=""
-case " $* " in
-    *" --attention "*|*" --reg "*) AUDIT_EXTRA="--attention" ;;
-esac
+prev=""
+for a in "$@"; do
+    case "$a" in
+        --attention|--reg) [[ "$AUDIT_EXTRA" == *"--attention"* ]] || AUDIT_EXTRA="$AUDIT_EXTRA --attention" ;;
+        --crop-border) AUDIT_EXTRA="$AUDIT_EXTRA --crop-border" ;;
+        --pf-mask=*) AUDIT_EXTRA="$AUDIT_EXTRA $a" ;;
+    esac
+    [ "$prev" = "--pf-mask" ] && AUDIT_EXTRA="$AUDIT_EXTRA --pf-mask $a"
+    prev="$a"
+done
 
 python -m scripts.audit_pseudo_features --split test --risk-threshold 0.30 --save-top-k 12 $AUDIT_EXTRA
 python -m scripts.audit_pseudo_features --split val --risk-threshold 0.30 --save-top-k 12 $AUDIT_EXTRA

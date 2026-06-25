@@ -86,6 +86,28 @@ def test_pseudo_mask_from_tensor_shape_and_values():
     assert uniq.issubset({0.0, 1.0})
 
 
+def test_crop_black_border_removes_frame():
+    import numpy as np
+    from PIL import Image
+    from src.data import CropBlackBorder
+
+    arr = np.zeros((100, 100, 3), dtype=np.uint8)
+    arr[20:80, 30:70] = 200  # bright content surrounded by an edge-connected black frame
+    cropped = CropBlackBorder()(Image.fromarray(arr))
+    w, h = cropped.size
+    assert w < 95 and h < 95          # frame removed
+    assert w > 15 and h > 30          # content preserved
+
+
+def test_pseudo_mask_kind_highlight_subset_of_combined():
+    img = torch.randn(3, 224, 224)
+    m_comb = pseudo_mask_from_tensor(img, IMAGENET_MEAN, IMAGENET_STD, size=56, kind="combined")
+    m_hi = pseudo_mask_from_tensor(img, IMAGENET_MEAN, IMAGENET_STD, size=56, kind="specular_highlight")
+    assert m_comb.shape == (1, 56, 56) and m_hi.shape == (1, 56, 56)
+    # highlight mask must be a subset of the combined mask (combined = dark ∪ highlight)
+    assert bool(torch.all(m_hi.bool() <= m_comb.bool()))
+
+
 def test_reg_training_step():
     """A full CE + pseudo + equivariance step updates parameters without error."""
     model = _model().train()

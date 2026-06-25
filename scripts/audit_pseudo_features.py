@@ -15,7 +15,7 @@ import torch
 from PIL import Image
 
 from src.attention import build_attention_resnet50
-from src.data import get_eval_transforms, ID_TO_LABEL, LABEL_NAMES_CN
+from src.data import CropBlackBorder, get_eval_transforms, ID_TO_LABEL, LABEL_NAMES_CN
 from src.models import build_resnet50
 from src.viz import (
     build_pseudo_feature_masks,
@@ -36,6 +36,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default=None, help="Defaults to cuda when available, otherwise cpu.")
     parser.add_argument("--attention", action="store_true",
                         help="Load the anatomy-attention ResNet-50 (must match how the checkpoint was trained).")
+    parser.add_argument("--crop-border", action="store_true",
+                        help="Remove the scope black border before inference/scoring (match training).")
+    parser.add_argument("--pf-mask", choices=["combined", "specular_highlight", "dark_border"], default="combined",
+                        help="Which pseudo-feature mask the high-risk score is based on (match training).")
     parser.add_argument("--risk-threshold", type=float, default=0.30)
     parser.add_argument("--max-samples", type=int, default=None, help="Optional cap for quick server smoke runs.")
     parser.add_argument("--save-top-k", type=int, default=12)
@@ -69,7 +73,8 @@ def main() -> None:
         model.load_state_dict(torch.load(args.checkpoint_path, map_location=device))
         model.eval()
         target_layer = model.layer4[-1]
-    transform = get_eval_transforms()
+    transform = get_eval_transforms(crop_border=args.crop_border)
+    border_cropper = CropBlackBorder() if args.crop_border else None
 
     records = []
     for idx, row in split_df.reset_index(drop=True).iterrows():
@@ -90,14 +95,15 @@ def main() -> None:
             target_layer=target_layer,
             device=device,
         )
+        mask_src = border_cropper(original) if border_cropper is not None else original
         masks = build_pseudo_feature_masks(
-            original.resize((heatmap.shape[1], heatmap.shape[0])),
+            mask_src.resize((heatmap.shape[1], heatmap.shape[0])),
             dark_threshold=args.dark_threshold,
             bright_threshold=args.bright_threshold,
             color_spread_threshold=args.color_spread_threshold,
             min_highlight_area=args.min_highlight_area,
         )
-        pseudo_score = pseudo_feature_attention_score(heatmap, masks["combined"])
+        pseudo_score = pseudo_feature_attention_score(heatmap, masks[args.pf_mask])
         dark_score = pseudo_feature_attention_score(heatmap, masks["dark_border"])
         highlight_score = pseudo_feature_attention_score(heatmap, masks["specular_highlight"])
 
@@ -166,7 +172,8 @@ def _save_audit_figure(
         target_layer=target_layer,
         device=device,
     )
-    display_image = original.resize((heatmap.shape[1], heatmap.shape[0]))
+    mask_src = CropBlackBorder()(original) if getattr(args, "crop_border", False) else original
+    display_image = mask_src.resize((heatmap.shape[1], heatmap.shape[0]))
     masks = build_pseudo_feature_masks(
         display_image,
         dark_threshold=args.dark_threshold,

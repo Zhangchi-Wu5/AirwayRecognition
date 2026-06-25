@@ -57,6 +57,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lambda-pf", type=float, default=0.1, help="Weight for pseudo-feature suppression loss.")
     parser.add_argument("--max-angle", type=float, default=15.0, help="Max rotation (deg) for equivariance loss.")
     parser.add_argument("--mask-size", type=int, default=56, help="Resolution for pseudo-feature masks.")
+    parser.add_argument("--crop-border", action="store_true",
+                        help="Remove the scope black border in preprocessing (recommend with --pf-mask specular_highlight).")
+    parser.add_argument("--pf-mask", choices=["combined", "specular_highlight", "dark_border"], default="combined",
+                        help="Which pseudo-feature mask the suppression loss targets.")
     return parser.parse_args()
 
 
@@ -85,11 +89,11 @@ def main() -> None:
     use_attention = args.attention or args.reg
     use_reg = args.reg
     train_ds = BronchoscopyDataset(
-        train_df, transform=get_train_transforms(),
-        return_pseudo_mask=use_reg, mask_size=args.mask_size,
+        train_df, transform=get_train_transforms(crop_border=args.crop_border),
+        return_pseudo_mask=use_reg, mask_size=args.mask_size, mask_kind=args.pf_mask,
     )
-    val_ds = BronchoscopyDataset(val_df, transform=get_eval_transforms())
-    test_ds = BronchoscopyDataset(test_df, transform=get_eval_transforms())
+    val_ds = BronchoscopyDataset(val_df, transform=get_eval_transforms(crop_border=args.crop_border))
+    test_ds = BronchoscopyDataset(test_df, transform=get_eval_transforms(crop_border=args.crop_border))
     pin_memory = device == "cuda"
     train_loader = DataLoader(
         train_ds,
@@ -124,7 +128,9 @@ def main() -> None:
     reg = None
     if use_reg:
         reg = {"lambda_eq": args.lambda_eq, "lambda_pf": args.lambda_pf, "max_angle": args.max_angle}
-        print(f"Regularization: lambda_eq={args.lambda_eq} lambda_pf={args.lambda_pf} max_angle={args.max_angle}")
+        print(f"Regularization: lambda_eq={args.lambda_eq} lambda_pf={args.lambda_pf} "
+              f"max_angle={args.max_angle} pf_mask={args.pf_mask}")
+    print(f"Preprocessing: crop_border={args.crop_border}")
 
     def log_epoch(info: dict) -> None:
         print(
