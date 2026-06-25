@@ -87,17 +87,37 @@ def evaluate(model: torch.nn.Module, X: torch.Tensor, y: torch.Tensor, device: s
     return correct / X.size(0)
 
 
-def run_robustness(model: torch.nn.Module, X: torch.Tensor, y: torch.Tensor, device: str, seed: int = 42) -> list:
-    """Return a list of {perturbation, level, accuracy} over rotation / glare / occlusion."""
+def _mean_std(vals: list) -> tuple:
+    m = sum(vals) / len(vals)
+    if len(vals) < 2:
+        return m, 0.0
+    var = sum((v - m) ** 2 for v in vals) / len(vals)
+    return m, var ** 0.5
+
+
+def run_robustness(
+    model: torch.nn.Module, X: torch.Tensor, y: torch.Tensor, device: str,
+    seed: int = 42, n_seeds: int = 1,
+) -> list:
+    """Return [{perturbation, level, accuracy, std}] over rotation / glare / occlusion.
+
+    Rotation is deterministic (std=0). Glare and occlusion depend on random patch
+    placement, so they are averaged over ``n_seeds`` placements and report the std.
+    """
+    n_seeds = max(1, n_seeds)
     results = []
     for a in ROTATIONS:
-        results.append({"perturbation": "rotation", "level": a, "accuracy": evaluate(model, apply_rotation(X, a), y, device)})
-    for cov in GLARE_COVERAGE:
-        Xp = apply_patches(X, cov, value=0.99, seed=seed)
-        results.append({"perturbation": "glare", "level": cov, "accuracy": evaluate(model, Xp, y, device)})
-    for cov in OCCLUSION_COVERAGE:
-        Xp = apply_patches(X, cov, value=0.0, seed=seed + 1)
-        results.append({"perturbation": "occlusion", "level": cov, "accuracy": evaluate(model, Xp, y, device)})
+        acc = evaluate(model, apply_rotation(X, a), y, device)
+        results.append({"perturbation": "rotation", "level": a, "accuracy": acc, "std": 0.0})
+    for pert, value, base in [("glare", 0.99, seed), ("occlusion", 0.0, seed + 1000)]:
+        cov_list = GLARE_COVERAGE if pert == "glare" else OCCLUSION_COVERAGE
+        for cov in cov_list:
+            accs = [
+                evaluate(model, apply_patches(X, cov, value=value, seed=base + s), y, device)
+                for s in range(n_seeds)
+            ]
+            mean, std = _mean_std(accs)
+            results.append({"perturbation": pert, "level": cov, "accuracy": mean, "std": std})
     return results
 
 
@@ -110,7 +130,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--crop-border", action="store_true", help="Match crop-border preprocessing used in training.")
     p.add_argument("--dropout", type=float, default=0.3)
     p.add_argument("--device", default=None)
-    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--seed", type=int, default=42, help="Base seed for glare/occlusion patch placement.")
+    p.add_argument("--seeds", type=int, default=1,
+                   help="Number of random seeds to average for glare/occlusion (rotation is deterministic).")
     p.add_argument("--batch-size", type=int, default=32)
     p.add_argument("--label", default="model", help="Name for this checkpoint in the printout.")
     p.add_argument("--output-csv", type=Path, default=None)
@@ -138,14 +160,18 @@ def main() -> None:
     X = torch.stack(xs)
     y = torch.tensor(ys)
 
-    results = run_robustness(model, X, y, device, seed=args.seed)
+    results = run_robustness(model, X, y, device, seed=args.seed, n_seeds=args.seeds)
     df = pd.DataFrame(results)
     df.insert(0, "label", args.label)
 
-    print(f"\n=== Robustness [{args.label}] on {args.split} ({X.size(0)} images, device={device}) ===")
+    print(f"\n=== Robustness [{args.label}] on {args.split} "
+          f"({X.size(0)} images, device={device}, seeds={args.seeds}) ===")
     for pert in ["rotation", "glare", "occlusion"]:
         sub = df[df["perturbation"] == pert]
-        cells = "  ".join(f"{lvl}:{acc:.3f}" for lvl, acc in zip(sub["level"], sub["accuracy"]))
+        cells = "  ".join(
+            f"{lvl}:{acc:.3f}" + (f"±{sd:.3f}" if sd > 0 else "")
+            for lvl, acc, sd in zip(sub["level"], sub["accuracy"], sub["std"])
+        )
         print(f"{pert:10s} {cells}")
 
     if args.output_csv is not None:
