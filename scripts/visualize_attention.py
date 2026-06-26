@@ -48,6 +48,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--crop-border", action="store_true", help="Match crop-border preprocessing used in training.")
     p.add_argument("--num", type=int, default=6, help="Number of images to visualize (first N of the split).")
     p.add_argument("--indices", default=None, help="Comma-separated row indices to visualize (overrides --num).")
+    p.add_argument("--topk-percent", type=float, default=None,
+                   help="If set (e.g. 25), the overlay highlights only the top X%% strongest attention "
+                        "pixels (clearer, more honest than the min-max red wash).")
     p.add_argument("--dropout", type=float, default=0.3)
     p.add_argument("--device", default=None)
     return p.parse_args()
@@ -89,14 +92,21 @@ def main() -> None:
         a = (a - a.min()) / (a.max() - a.min() + 1e-8)  # min-max for display contrast
         base = (tensor * _STD + _MEAN).clamp(0, 1).permute(1, 2, 0).numpy()
 
+        if args.topk_percent:
+            import numpy as np
+            thr = np.percentile(a, 100 - args.topk_percent)
+            overlay_alpha = np.where(a >= thr, 0.55, 0.0)
+        else:
+            overlay_alpha = 0.45
+
         fig, axes = plt.subplots(1, 3, figsize=(12, 4))
         axes[0].imshow(base)
         axes[0].set_title("输入图像")
         axes[1].imshow(a, cmap="jet")
         axes[1].set_title("内嵌解剖注意力 A")
         axes[2].imshow(base)
-        axes[2].imshow(a, cmap="jet", alpha=0.45)
-        axes[2].set_title("叠加")
+        axes[2].imshow(a, cmap="jet", alpha=overlay_alpha)
+        axes[2].set_title("叠加（前%g%%）" % args.topk_percent if args.topk_percent else "叠加")
         for ax in axes:
             ax.axis("off")
         fig.suptitle(f"true={row['label']}  pred={ID_TO_LABEL[pred_id]}  conf={conf:.3f}", fontsize=11)
