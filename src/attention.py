@@ -7,6 +7,7 @@ classification. The attention map can be regularized during training (see
 """
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torchvision import models
 
 
@@ -31,7 +32,8 @@ class AnatomyAttentionResNet50(nn.Module):
     forward(x, return_attn=True) -> (logits, attn_map)  where attn_map is (B,1,7,7)
     """
 
-    def __init__(self, num_classes: int = 3, pretrained: bool = True, dropout: float = 0.3):
+    def __init__(self, num_classes: int = 3, pretrained: bool = True, dropout: float = 0.3,
+                 hires: bool = False):
         super().__init__()
         weights = models.ResNet50_Weights.IMAGENET1K_V2 if pretrained else None
         base = models.resnet50(weights=weights)
@@ -39,6 +41,10 @@ class AnatomyAttentionResNet50(nn.Module):
             base.conv1, base.bn1, base.relu, base.maxpool,
             base.layer1, base.layer2, base.layer3, base.layer4,
         )
+        # hires: compute the attention map at layer3 resolution (14x14 for 224 input)
+        # instead of layer4 (7x7), for a finer attention map. Module structure is
+        # unchanged, so checkpoints remain loadable across both modes (use the same flag).
+        self.hires = hires
         self.attention = SpatialAttention()
         self.pool = nn.AdaptiveAvgPool2d(1)
         in_features = base.fc.in_features  # 2048
@@ -48,11 +54,24 @@ class AnatomyAttentionResNet50(nn.Module):
         )
 
     def forward(self, x: torch.Tensor, return_attn: bool = False):
-        feat = self.backbone(x)                              # B,2048,7,7
-        attn = self.attention(feat)                          # B,1,7,7
-        global_feat = self.pool(feat).flatten(1)             # B,2048 (整图全局特征)
-        attn_feat = self.pool(feat * attn).flatten(1)        # B,2048 (解剖关注特征)
-        fused = torch.cat([global_feat, attn_feat], dim=1)   # B,4096
+        if self.hires:
+            feat3 = None
+            feat = x
+            for i, module in enumerate(self.backbone):
+                feat = module(feat)
+                if i == 6:           # output of layer3 -> B,1024,14,14
+                    feat3 = feat
+            feat4 = feat             # B,2048,7,7
+            attn = self.attention(feat3)                          # B,1,14,14 (finer)
+            feat4_up = F.interpolate(feat4, size=attn.shape[-2:], mode="bilinear", align_corners=False)
+            global_feat = self.pool(feat4).flatten(1)             # B,2048
+            attn_feat = self.pool(feat4_up * attn).flatten(1)     # B,2048
+        else:
+            feat4 = self.backbone(x)                              # B,2048,7,7
+            attn = self.attention(feat4)                          # B,1,7,7
+            global_feat = self.pool(feat4).flatten(1)             # B,2048
+            attn_feat = self.pool(feat4 * attn).flatten(1)        # B,2048
+        fused = torch.cat([global_feat, attn_feat], dim=1)        # B,4096
         logits = self.fc(fused)
         if return_attn:
             return logits, attn
@@ -77,7 +96,9 @@ class AnatomyAttentionResNet50(nn.Module):
 
 
 def build_attention_resnet50(
-    num_classes: int = 3, pretrained: bool = True, dropout: float = 0.3
+    num_classes: int = 3, pretrained: bool = True, dropout: float = 0.3, hires: bool = False
 ) -> AnatomyAttentionResNet50:
     """Factory mirroring ``build_resnet50`` for the attention variant."""
-    return AnatomyAttentionResNet50(num_classes=num_classes, pretrained=pretrained, dropout=dropout)
+    return AnatomyAttentionResNet50(
+        num_classes=num_classes, pretrained=pretrained, dropout=dropout, hires=hires
+    )

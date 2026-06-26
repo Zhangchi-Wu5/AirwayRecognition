@@ -46,6 +46,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--attention", action="store_true",
                    help="Required: the checkpoint must be an anatomy-attention model.")
     p.add_argument("--crop-border", action="store_true", help="Match crop-border preprocessing used in training.")
+    p.add_argument("--attn-hires", action="store_true",
+                   help="Build the attention model in hires (layer3, 14x14) mode — match the checkpoint.")
     p.add_argument("--num", type=int, default=6, help="Number of images to visualize (first N of the split).")
     p.add_argument("--indices", default=None, help="Comma-separated row indices to visualize (overrides --num).")
     p.add_argument("--topk-percent", type=float, default=None,
@@ -63,7 +65,8 @@ def main() -> None:
 
     if not args.attention:
         print("Note: --attention not set; attention visualization requires the attention model. Proceeding as attention model.")
-    model = build_attention_resnet50(num_classes=3, pretrained=False, dropout=args.dropout).to(device)
+    model = build_attention_resnet50(num_classes=3, pretrained=False, dropout=args.dropout,
+                                     hires=args.attn_hires).to(device)
     model.load_state_dict(torch.load(args.checkpoint_path, map_location=device))
     model.eval()
 

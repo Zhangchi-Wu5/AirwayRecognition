@@ -36,6 +36,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default=None, help="Defaults to cuda when available, otherwise cpu.")
     parser.add_argument("--attention", action="store_true",
                         help="Load the anatomy-attention ResNet-50 (must match how the checkpoint was trained).")
+    parser.add_argument("--attn-hires", action="store_true",
+                        help="Build the attention model in hires (layer3, 14x14) mode — match the checkpoint.")
     parser.add_argument("--crop-border", action="store_true",
                         help="Remove the scope black border before inference/scoring (match training).")
     parser.add_argument("--pf-mask", choices=["combined", "specular_highlight", "dark_border"], default="combined",
@@ -64,7 +66,8 @@ def main() -> None:
     samples_dir.mkdir(parents=True, exist_ok=True)
 
     if args.attention:
-        model = build_attention_resnet50(num_classes=3, pretrained=False, dropout=args.dropout).to(device)
+        model = build_attention_resnet50(num_classes=3, pretrained=False, dropout=args.dropout,
+                                         hires=args.attn_hires).to(device)
         model.load_state_dict(torch.load(args.checkpoint_path, map_location=device))
         model.eval()
         target_layer = model.gradcam_target_layer()

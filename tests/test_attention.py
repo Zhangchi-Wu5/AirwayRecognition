@@ -86,6 +86,36 @@ def test_pseudo_mask_from_tensor_shape_and_values():
     assert uniq.issubset({0.0, 1.0})
 
 
+def test_hires_attention_is_14x14_and_keys_match():
+    lo = build_attention_resnet50(num_classes=3, pretrained=False, hires=False).eval()
+    hi = build_attention_resnet50(num_classes=3, pretrained=False, hires=True).eval()
+    x = torch.randn(2, 3, 224, 224)
+    logits_lo, attn_lo = lo(x, return_attn=True)
+    logits_hi, attn_hi = hi(x, return_attn=True)
+    assert attn_lo.shape == (2, 1, 7, 7)
+    assert attn_hi.shape == (2, 1, 14, 14)      # finer attention map
+    assert logits_hi.shape == (2, 3)
+    # module structure identical -> checkpoints interchangeable (must use matching --attn-hires)
+    assert set(lo.state_dict().keys()) == set(hi.state_dict().keys())
+
+
+def test_hires_reg_training_step():
+    model = build_attention_resnet50(num_classes=3, pretrained=False, hires=True).train()
+    opt = torch.optim.AdamW(model.parameters(), lr=1e-3)
+    images = torch.randn(2, 3, 224, 224)
+    labels = torch.tensor([1, 2])
+    masks = (torch.rand(2, 1, 56, 56) > 0.7).float()
+    crit = torch.nn.CrossEntropyLoss()
+    opt.zero_grad()
+    logits, attn = model(images, return_attn=True)
+    loss = crit(logits, labels)
+    loss = loss + 0.1 * pseudo_suppression_loss(attn, masks)
+    loss = loss + 0.1 * equivariance_loss(model, images, attn, max_angle=15.0)
+    loss.backward()
+    opt.step()
+    assert torch.isfinite(loss)
+
+
 def test_crop_black_border_removes_frame():
     import numpy as np
     from PIL import Image

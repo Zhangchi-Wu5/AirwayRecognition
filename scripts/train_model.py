@@ -61,6 +61,8 @@ def parse_args() -> argparse.Namespace:
                         help="Remove the scope black border in preprocessing (recommend with --pf-mask specular_highlight).")
     parser.add_argument("--pf-mask", choices=["combined", "specular_highlight", "dark_border"], default="combined",
                         help="Which pseudo-feature mask the suppression loss targets.")
+    parser.add_argument("--attn-hires", action="store_true",
+                        help="Compute the attention map at layer3 (14x14) instead of layer4 (7x7) for a finer map.")
     return parser.parse_args()
 
 
@@ -118,8 +120,9 @@ def main() -> None:
     )
 
     if use_attention:
-        model = build_attention_resnet50(num_classes=3, pretrained=not args.no_pretrained, dropout=args.dropout)
-        print(f"Model: AnatomyAttentionResNet50 (reg={'on' if use_reg else 'off'})")
+        model = build_attention_resnet50(num_classes=3, pretrained=not args.no_pretrained,
+                                         dropout=args.dropout, hires=args.attn_hires)
+        print(f"Model: AnatomyAttentionResNet50 (reg={'on' if use_reg else 'off'}, hires={args.attn_hires})")
     else:
         model = build_resnet50(num_classes=3, pretrained=not args.no_pretrained, dropout=args.dropout)
         print("Model: ResNet50 (baseline)")

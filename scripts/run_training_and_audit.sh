@@ -17,6 +17,7 @@ for a in "$@"; do
     case "$a" in
         --attention|--reg) [[ "$AUDIT_EXTRA" == *"--attention"* ]] || AUDIT_EXTRA="$AUDIT_EXTRA --attention" ;;
         --crop-border) AUDIT_EXTRA="$AUDIT_EXTRA --crop-border" ;;
+        --attn-hires) AUDIT_EXTRA="$AUDIT_EXTRA --attn-hires" ;;
         --pf-mask=*) AUDIT_EXTRA="$AUDIT_EXTRA $a" ;;
     esac
     [ "$prev" = "--pf-mask" ] && AUDIT_EXTRA="$AUDIT_EXTRA --pf-mask $a"

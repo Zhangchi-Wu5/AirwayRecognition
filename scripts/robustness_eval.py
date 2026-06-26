@@ -127,6 +127,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--splits-dir", type=Path, default=PROJECT_ROOT / "data_splits")
     p.add_argument("--split", choices=["train", "val", "test"], default="test")
     p.add_argument("--attention", action="store_true", help="Load the anatomy-attention model.")
+    p.add_argument("--attn-hires", action="store_true",
+                   help="Build the attention model in hires (layer3, 14x14) mode — match the checkpoint.")
     p.add_argument("--crop-border", action="store_true", help="Match crop-border preprocessing used in training.")
     p.add_argument("--dropout", type=float, default=0.3)
     p.add_argument("--device", default=None)
@@ -144,7 +146,8 @@ def main() -> None:
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
 
     if args.attention:
-        model = build_attention_resnet50(num_classes=3, pretrained=False, dropout=args.dropout).to(device)
+        model = build_attention_resnet50(num_classes=3, pretrained=False, dropout=args.dropout,
+                                         hires=args.attn_hires).to(device)
     else:
         model = build_resnet50(num_classes=3, pretrained=False, dropout=args.dropout).to(device)
     model.load_state_dict(torch.load(args.checkpoint_path, map_location=device))
