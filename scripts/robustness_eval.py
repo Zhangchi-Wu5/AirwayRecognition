@@ -112,10 +112,15 @@ def run_robustness(
     for pert, value, base in [("glare", 0.99, seed), ("occlusion", 0.0, seed + 1000)]:
         cov_list = GLARE_COVERAGE if pert == "glare" else OCCLUSION_COVERAGE
         for cov in cov_list:
-            accs = [
-                evaluate(model, apply_patches(X, cov, value=value, seed=base + s), y, device)
-                for s in range(n_seeds)
-            ]
+            if cov <= 0:
+                # The clean point is deterministic; evaluating it n_seeds times
+                # only wastes GPU time and does not estimate perturbation variance.
+                accs = [evaluate(model, X, y, device)]
+            else:
+                accs = [
+                    evaluate(model, apply_patches(X, cov, value=value, seed=base + s), y, device)
+                    for s in range(n_seeds)
+                ]
             mean, std = _mean_std(accs)
             results.append({"perturbation": pert, "level": cov, "accuracy": mean, "std": std})
     return results

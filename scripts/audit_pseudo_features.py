@@ -15,7 +15,7 @@ import torch
 from PIL import Image
 
 from src.attention import build_attention_resnet50
-from src.data import CropBlackBorder, get_eval_transforms, ID_TO_LABEL, LABEL_NAMES_CN
+from src.data import get_eval_geometry_transforms, get_eval_transforms, ID_TO_LABEL, LABEL_NAMES_CN
 from src.models import build_resnet50
 from src.viz import (
     build_pseudo_feature_masks,
@@ -77,7 +77,7 @@ def main() -> None:
         model.eval()
         target_layer = model.layer4[-1]
     transform = get_eval_transforms(crop_border=args.crop_border)
-    border_cropper = CropBlackBorder() if args.crop_border else None
+    display_transform = get_eval_geometry_transforms(crop_border=args.crop_border)
 
     records = []
     for idx, row in split_df.reset_index(drop=True).iterrows():
@@ -98,9 +98,16 @@ def main() -> None:
             target_layer=target_layer,
             device=device,
         )
-        mask_src = border_cropper(original) if border_cropper is not None else original
+        # Critical alignment invariant: display image and masks use exactly the same
+        # PIL geometry as the tensor from which ``heatmap`` was computed.
+        mask_src = display_transform(original)
+        if mask_src.size != (heatmap.shape[1], heatmap.shape[0]):
+            raise RuntimeError(
+                f"Aligned display image has size {mask_src.size}, heatmap is "
+                f"{heatmap.shape[1]}x{heatmap.shape[0]}"
+            )
         masks = build_pseudo_feature_masks(
-            mask_src.resize((heatmap.shape[1], heatmap.shape[0])),
+            mask_src,
             dark_threshold=args.dark_threshold,
             bright_threshold=args.bright_threshold,
             color_spread_threshold=args.color_spread_threshold,
@@ -112,6 +119,7 @@ def main() -> None:
 
         dark_area_ratio = float(masks["dark_border"].mean())
         highlight_area_ratio = float(masks["specular_highlight"].mean())
+        configured_area_ratio = float(masks[args.pf_mask].mean())
         is_high_risk = pseudo_score >= args.risk_threshold
         records.append({
             "index": idx,
@@ -126,6 +134,16 @@ def main() -> None:
             "specular_highlight_attention_score": highlight_score,
             "dark_border_area_ratio": dark_area_ratio,
             "specular_highlight_area_ratio": highlight_area_ratio,
+            "configured_mask_area_ratio": configured_area_ratio,
+            "dark_border_attention_enrichment": (
+                dark_score / dark_area_ratio if dark_area_ratio > 0 else 0.0
+            ),
+            "specular_highlight_attention_enrichment": (
+                highlight_score / highlight_area_ratio if highlight_area_ratio > 0 else 0.0
+            ),
+            "configured_attention_enrichment": (
+                pseudo_score / configured_area_ratio if configured_area_ratio > 0 else 0.0
+            ),
             "high_risk": is_high_risk,
         })
 
@@ -175,8 +193,14 @@ def _save_audit_figure(
         target_layer=target_layer,
         device=device,
     )
-    mask_src = CropBlackBorder()(original) if getattr(args, "crop_border", False) else original
-    display_image = mask_src.resize((heatmap.shape[1], heatmap.shape[0]))
+    display_image = get_eval_geometry_transforms(
+        crop_border=getattr(args, "crop_border", False)
+    )(original)
+    if display_image.size != (heatmap.shape[1], heatmap.shape[0]):
+        raise RuntimeError(
+            f"Aligned display image has size {display_image.size}, heatmap is "
+            f"{heatmap.shape[1]}x{heatmap.shape[0]}"
+        )
     masks = build_pseudo_feature_masks(
         display_image,
         dark_threshold=args.dark_threshold,

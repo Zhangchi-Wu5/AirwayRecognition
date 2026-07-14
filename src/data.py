@@ -165,14 +165,27 @@ def get_train_transforms(crop_border: bool = False) -> transforms.Compose:
 
 def get_eval_transforms(crop_border: bool = False) -> transforms.Compose:
     """Deterministic preprocessing for validation/test/inference."""
+    ops = list(get_eval_geometry_transforms(crop_border=crop_border).transforms)
+    ops += [
+        transforms.ToTensor(),
+        transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
+    ]
+    return transforms.Compose(ops)
+
+
+def get_eval_geometry_transforms(crop_border: bool = False) -> transforms.Compose:
+    """Deterministic PIL geometry shared by inference, masks, and overlays.
+
+    Any Grad-CAM display image or pseudo-feature mask must pass through this exact
+    transform before it is compared with a heatmap computed from
+    :func:`get_eval_transforms`.
+    """
     ops = []
     if crop_border:
         ops.append(CropBlackBorder())
     ops += [
         transforms.Resize(256),
         transforms.CenterCrop(INPUT_SIZE),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
     ]
     return transforms.Compose(ops)
 

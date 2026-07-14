@@ -221,6 +221,7 @@ def make_gradcam_overlay(
     target_layer,
     original_pil: Image.Image,
     device: str = "cuda",
+    crop_border: bool = False,
 ) -> np.ndarray:
     """Generate a Grad-CAM heatmap overlay on the original PIL image.
 
@@ -229,8 +230,10 @@ def make_gradcam_overlay(
         image_tensor: single preprocessed image tensor (3, 224, 224), no batch dim
         target_class: class index to explain
         target_layer: module reference (e.g. model.layer4[-1])
-        original_pil: original PIL image (any size); will be resized to 224x224 for overlay
+        original_pil: original PIL image (any size); receives the same deterministic
+            geometry used by the model input before overlay
         device: 'cuda' or 'cpu'
+        crop_border: match the flag passed to ``get_eval_transforms``
 
     Returns:
         H×W×3 uint8 numpy array with Grad-CAM overlaid.
@@ -244,7 +247,15 @@ def make_gradcam_overlay(
         target_layer=target_layer,
         device=device,
     )
-    rgb = np.asarray(original_pil.resize((224, 224))).astype(np.float32) / 255.0
+    from src.data import get_eval_geometry_transforms
+
+    aligned_pil = get_eval_geometry_transforms(crop_border=crop_border)(original_pil)
+    if aligned_pil.size != (grayscale_cam.shape[1], grayscale_cam.shape[0]):
+        raise RuntimeError(
+            f"Aligned image has size {aligned_pil.size}, heatmap is "
+            f"{grayscale_cam.shape[1]}x{grayscale_cam.shape[0]}"
+        )
+    rgb = np.asarray(aligned_pil).astype(np.float32) / 255.0
     overlay = show_cam_on_image(rgb, grayscale_cam, use_rgb=True)
     return overlay
 

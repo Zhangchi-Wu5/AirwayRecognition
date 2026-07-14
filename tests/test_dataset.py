@@ -1,9 +1,17 @@
 """Tests for BronchoscopyDataset and transforms."""
 import pandas as pd
+import numpy as np
 import pytest
 import torch
 from PIL import Image
-from src.data import BronchoscopyDataset, get_train_transforms, get_eval_transforms
+from src.data import (
+    BronchoscopyDataset,
+    IMAGENET_MEAN,
+    IMAGENET_STD,
+    get_train_transforms,
+    get_eval_transforms,
+    get_eval_geometry_transforms,
+)
 
 
 @pytest.fixture
@@ -57,6 +65,22 @@ class TestTransforms:
         out1 = transform(img)
         out2 = transform(img)
         assert torch.allclose(out1, out2), "Eval transforms must be deterministic"
+
+    @pytest.mark.parametrize("crop_border", [False, True])
+    def test_eval_display_geometry_matches_model_tensor(self, crop_border):
+        image = np.full((180, 320, 3), [140, 70, 60], dtype=np.uint8)
+        image[:, :30] = 0
+        image[:, -30:] = 0
+        pil = Image.fromarray(image)
+
+        display = get_eval_geometry_transforms(crop_border=crop_border)(pil)
+        tensor = get_eval_transforms(crop_border=crop_border)(pil)
+        mean = torch.tensor(IMAGENET_MEAN).view(3, 1, 1)
+        std = torch.tensor(IMAGENET_STD).view(3, 1, 1)
+        denormalized = (tensor * std + mean).permute(1, 2, 0).numpy()
+
+        assert display.size == (224, 224)
+        assert np.allclose(denormalized, np.asarray(display) / 255.0, atol=1e-6)
 
 
 class TestBronchoscopyDataset:
