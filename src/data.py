@@ -120,6 +120,10 @@ class CropBlackBorder:
         self.detect_size = detect_size
 
     def __call__(self, image: Image.Image) -> Image.Image:
+        return image.crop(self.get_bbox(image))
+
+    def get_bbox(self, image: Image.Image) -> tuple[int, int, int, int]:
+        """Return the crop in original coordinates, so paired images can share it."""
         import numpy as np
         from src.viz import detect_dark_border_mask
 
@@ -128,7 +132,7 @@ class CropBlackBorder:
         border = detect_dark_border_mask(small, dark_threshold=self.dark_threshold)
         content = ~border
         if not content.any():
-            return image
+            return (0, 0, w, h)
         ys = np.where(content.any(axis=1))[0]
         xs = np.where(content.any(axis=0))[0]
         x0 = int(xs[0] / self.detect_size * w)
@@ -136,8 +140,8 @@ class CropBlackBorder:
         y0 = int(ys[0] / self.detect_size * h)
         y1 = int((ys[-1] + 1) / self.detect_size * h)
         if (x1 - x0) < 8 or (y1 - y0) < 8:  # skip degenerate / near-empty crops
-            return image
-        return image.crop((x0, y0, x1, y1))
+            return (0, 0, w, h)
+        return (x0, y0, x1, y1)
 
 
 def get_train_transforms(crop_border: bool = False) -> transforms.Compose:
