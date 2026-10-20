@@ -45,16 +45,21 @@ def train_one_epoch(
     criterion: nn.Module,
     device: str = "cuda",
     reg: Optional[dict] = None,
+    component_metrics: Optional[dict] = None,
 ) -> tuple[float, float]:
     """Train for one epoch; return (avg_loss, accuracy).
 
     If ``reg`` is provided (dict with ``lambda_eq``, ``lambda_pf``, ``max_angle``),
     the model must support ``forward(x, return_attn=True)`` and the loader must yield
     (images, labels, pseudo_mask) triples. Total loss = CE + lambda_pf * pseudo
-    suppression + lambda_eq * attention equivariance.
+    suppression + lambda_eq * attention equivariance. The opt-in
+    ``eq_auxiliary_forward`` key also evaluates EQ when its weight is zero, for
+    a sham control with matching BatchNorm updates and RNG consumption.
+    ``component_metrics`` optionally receives image-weighted, unweighted losses.
     """
     model.train()
     total_loss, total_correct, total_count = 0.0, 0, 0
+    component_totals = {"ce_loss": 0.0, "pf_loss": 0.0, "eq_loss": 0.0}
     for batch in loader:
         if reg is not None:
             images, labels, masks = batch
@@ -64,23 +69,34 @@ def train_one_epoch(
         images = images.to(device)
         labels = labels.to(device)
         optimizer.zero_grad()
+        pf_loss = eq_loss = None
         if reg is not None:
             logits, attn = model(images, return_attn=True)
-            loss = criterion(logits, labels)
+            ce_loss = criterion(logits, labels)
+            loss = ce_loss
             if reg.get("lambda_pf", 0.0) > 0:
-                loss = loss + reg["lambda_pf"] * pseudo_suppression_loss(attn, masks)
-            if reg.get("lambda_eq", 0.0) > 0:
-                loss = loss + reg["lambda_eq"] * equivariance_loss(
+                pf_loss = pseudo_suppression_loss(attn, masks)
+                loss = loss + reg["lambda_pf"] * pf_loss
+            if reg.get("lambda_eq", 0.0) > 0 or reg.get("eq_auxiliary_forward", False):
+                eq_loss = equivariance_loss(
                     model, images, attn, max_angle=reg.get("max_angle", 15.0)
                 )
+                loss = loss + reg.get("lambda_eq", 0.0) * eq_loss
         else:
             logits = model(images)
-            loss = criterion(logits, labels)
+            ce_loss = criterion(logits, labels)
+            loss = ce_loss
         loss.backward()
         optimizer.step()
         total_loss += loss.item() * images.size(0)
         total_correct += (logits.argmax(dim=1) == labels).sum().item()
         total_count += images.size(0)
+        if component_metrics is not None:
+            for name, value in (("ce_loss", ce_loss), ("pf_loss", pf_loss), ("eq_loss", eq_loss)):
+                if value is not None:
+                    component_totals[name] += value.detach().item() * images.size(0)
+    if component_metrics is not None:
+        component_metrics.update({name: value / total_count for name, value in component_totals.items()})
     return total_loss / total_count, total_correct / total_count
 
 
@@ -119,6 +135,7 @@ def train_two_stage(
     checkpoint_path: Optional[Path] = None,
     on_epoch_end: Optional[Callable[[dict], None]] = None,
     reg: Optional[dict] = None,
+    track_loss_components: bool = False,
 ) -> dict:
     """Run two-stage fine-tuning.
 
@@ -136,15 +153,23 @@ def train_two_stage(
         "train_loss": [], "train_acc": [],
         "val_loss": [], "val_acc": [],
     }
+    if track_loss_components:
+        history.update({name: [] for name in ("ce_loss", "pf_loss", "eq_loss")})
 
     # Stage 1: head only
     _freeze_backbone(model)
     trainable = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(trainable, lr=stage1_lr, weight_decay=weight_decay)
     for epoch in range(1, stage1_epochs + 1):
-        train_loss, train_acc = train_one_epoch(model, train_loader, optimizer, criterion, device, reg=reg)
+        components = {} if track_loss_components else None
+        train_loss, train_acc = train_one_epoch(
+            model, train_loader, optimizer, criterion, device, reg=reg, component_metrics=components
+        )
         val_loss, val_acc = validate(model, val_loader, criterion, device)
         _record(history, 1, epoch, train_loss, train_acc, val_loss, val_acc)
+        if components is not None:
+            for name, value in components.items():
+                history[name].append(value)
         if on_epoch_end:
             on_epoch_end({"stage": 1, "epoch": epoch, "train_loss": train_loss,
                           "train_acc": train_acc, "val_loss": val_loss, "val_acc": val_acc})
@@ -156,10 +181,16 @@ def train_two_stage(
     best_val_acc = -1.0
     patience_counter = 0
     for epoch in range(1, stage2_epochs + 1):
-        train_loss, train_acc = train_one_epoch(model, train_loader, optimizer, criterion, device, reg=reg)
+        components = {} if track_loss_components else None
+        train_loss, train_acc = train_one_epoch(
+            model, train_loader, optimizer, criterion, device, reg=reg, component_metrics=components
+        )
         val_loss, val_acc = validate(model, val_loader, criterion, device)
         scheduler.step()
         _record(history, 2, epoch, train_loss, train_acc, val_loss, val_acc)
+        if components is not None:
+            for name, value in components.items():
+                history[name].append(value)
         if on_epoch_end:
             on_epoch_end({"stage": 2, "epoch": epoch, "train_loss": train_loss,
                           "train_acc": train_acc, "val_loss": val_loss, "val_acc": val_acc})

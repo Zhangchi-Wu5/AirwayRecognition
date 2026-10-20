@@ -132,6 +132,7 @@ notebook 首次运行时，section 2 会把 `PROJECT_ROOT` 加到 `sys.path`。�
 
 ## 设计与实施文档
 
+- 旋转约束对照：[服务器运行说明](docs/ROTATION_ABLATION_RUN.md)，同一模型分别关闭和启用 EQ 损失，匹配辅助前向计算，在验证集评价旋转稳定性。
 - 逐图反光配对评估：[服务器运行说明](docs/GLARE_PAIRED_EVALUATION.md)，使用已训练权重对比基线和完整方案，导出预测翻转率、正确变错误比例与逐类概率变化。
 - BatchNorm 诊断：[运行与结果解释](docs/BN_DIAGNOSTIC_AND_GLARE_PLAN.md)，只用训练集重估 BN，在验证集比较校准前后；附抗反光训练与高光掩膜的候选改进方案。
 - 设计文档：`docs/specs/2026-04-16-bronchoscopy-classifier-design.md`
