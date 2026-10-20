@@ -132,6 +132,7 @@ notebook 首次运行时，section 2 会把 `PROJECT_ROOT` 加到 `sys.path`。�
 
 ## 设计与实施文档
 
+- 训练期注意力对照：[服务器运行说明](docs/ATTENTION_TRAINING_ABLATION_RUN.md)，匹配训练流程比较从头学习注意力与固定均匀注意力，主对照同时关闭 EQ 和高光约束。
 - 旋转中的注意力作用：[服务器运行说明](docs/ROTATION_ATTENTION_RUN.md)，在固定旋转角度下替换注意力，直接比较EQ增益及其相对原始注意力的变化。
 - 注意力机制诊断：[服务器运行说明](docs/ATTENTION_INTERVENTION_RUN.md)，固定已有权重，导出统一色阶的原始注意力图，并用等均值常数、空间打乱和全1图检查预测依赖。
 - 旋转约束对照：[服务器运行说明](docs/ROTATION_ABLATION_RUN.md)，同一模型分别关闭和启用 EQ 损失，匹配辅助前向计算，在验证集评价旋转稳定性。
