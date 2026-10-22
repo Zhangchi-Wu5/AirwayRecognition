@@ -29,6 +29,9 @@ outputs/airway_fewshot_server_*.tar.gz
 resnet_fewshot_*results*.tar.gz
 resnet_fewshot_*results*.tar.gz.sha256
 fewshot_suite*.log
+outputs/resnet_baseline_reproduction_*/
+outputs/resnet_baseline_reproduction_*.tar.gz*
+baseline_reproduction*.log
 
 # IDE
 .idea/
