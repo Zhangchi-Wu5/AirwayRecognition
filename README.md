@@ -132,6 +132,7 @@ notebook 首次运行时，section 2 会把 `PROJECT_ROOT` 加到 `sys.path`。�
 
 ## 设计与实施文档
 
+- Grad-CAM 遮挡依赖初筛：[服务器运行说明](docs/GRADCAM_FAITHFULNESS_SCREEN.md)，用已有 ResNet 权重比较高响应、低响应与随机区域的等面积扰动，不重新训练。
 - 候选区域与关系特征：[服务器运行说明](docs/REGION_RELATION_ABLATION_RUN.md)，以现有分类标签开展普通 ResNet、局部区域、区域关系及去几何关系四组探索实验，并导出候选示意图。
 - 训练期注意力对照：[服务器运行说明](docs/ATTENTION_TRAINING_ABLATION_RUN.md)，匹配训练流程比较从头学习注意力与固定均匀注意力，主对照同时关闭 EQ 和高光约束。
 - 旋转中的注意力作用：[服务器运行说明](docs/ROTATION_ATTENTION_RUN.md)，在固定旋转角度下替换注意力，直接比较EQ增益及其相对原始注意力的变化。
