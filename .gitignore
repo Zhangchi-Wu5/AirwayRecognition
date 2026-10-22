@@ -32,6 +32,9 @@ fewshot_suite*.log
 outputs/resnet_baseline_reproduction_*/
 outputs/resnet_baseline_reproduction_*.tar.gz*
 baseline_reproduction*.log
+outputs/resnet_layer4_*/
+outputs/resnet_layer4_*.tar.gz*
+layer4_suite*.log
 
 # IDE
 .idea/

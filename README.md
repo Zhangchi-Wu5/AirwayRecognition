@@ -132,6 +132,7 @@ notebook 首次运行时，section 2 会把 `PROJECT_ROOT` 加到 `sys.path`。�
 
 ## 设计与实施文档
 
+- ResNet 小样本适配范围：[layer4＋分类头服务器对照](docs/RESNET_LAYER4_SUITE_SERVER.md)，复用5/10-shot的40组整体微调结果，同支持集、同更新预算新增40组部分微调。
 - ResNet 全量强基线：[服务器复现与核对](docs/RESNET_BASELINE_REPRODUCTION_SERVER.md)，复用原训练流程重跑三个种子，并补齐当前 full 对照，再确定低标注方法比较。
 - ResNet 小样本完整对照：[统一服务器流程](docs/RESNET_FEWSHOT_SUITE_SERVER.md)，同一环境依次运行冻结特征与整体微调，恢复进度并一次打包回本地分析。
 - ResNet 小样本筛查：[运行与判读](docs/RESNET_FEWSHOT_RUN.md)，每类 1／5／10／20 张、20 次训练患者抽样及同协议全量对照，测量标注量与性能波动。
