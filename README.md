@@ -132,6 +132,9 @@ notebook 首次运行时，section 2 会把 `PROJECT_ROOT` 加到 `sys.path`。�
 
 ## 设计与实施文档
 
+- ResNet 小样本完整对照：[统一服务器流程](docs/RESNET_FEWSHOT_SUITE_SERVER.md)，同一环境依次运行冻结特征与整体微调，恢复进度并一次打包回本地分析。
+- ResNet 小样本筛查：[运行与判读](docs/RESNET_FEWSHOT_RUN.md)，每类 1／5／10／20 张、20 次训练患者抽样及同协议全量对照，测量标注量与性能波动。
+- ResNet 小样本微调：[服务器运行说明](docs/RESNET_FEWSHOT_FINETUNE_SERVER.md)，复用原支持集，在相同更新预算下微调主干，支持运行检查、断点恢复及结果回传。
 - Grad-CAM 遮挡依赖初筛：[服务器运行说明](docs/GRADCAM_FAITHFULNESS_SCREEN.md)，用已有 ResNet 权重比较高响应、低响应与随机区域的等面积扰动，不重新训练。
 - 候选区域与关系特征：[服务器运行说明](docs/REGION_RELATION_ABLATION_RUN.md)，以现有分类标签开展普通 ResNet、局部区域、区域关系及去几何关系四组探索实验，并导出候选示意图。
 - 训练期注意力对照：[服务器运行说明](docs/ATTENTION_TRAINING_ABLATION_RUN.md)，匹配训练流程比较从头学习注意力与固定均匀注意力，主对照同时关闭 EQ 和高光约束。

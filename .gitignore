@@ -21,6 +21,15 @@ checkpoints/*.pth
 outputs/*.png
 outputs/gradcam_examples/*.png
 
+# 小样本实验产物留在服务器/本地分析目录，不随代码同步
+outputs/resnet_fewshot_*/
+outputs/resnet_fewshot_*.log
+outputs/resnet_fewshot_*results*.tar.gz
+outputs/airway_fewshot_server_*.tar.gz
+resnet_fewshot_*results*.tar.gz
+resnet_fewshot_*results*.tar.gz.sha256
+fewshot_suite*.log
+
 # IDE
 .idea/
 .vscode/
