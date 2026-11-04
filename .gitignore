@@ -36,6 +36,12 @@ outputs/resnet_layer4_*/
 outputs/resnet_layer4_*.tar.gz*
 layer4_suite*.log
 
+# renew 新数据实验与本地核查（含患者标识，不随代码同步）
+outputs/renew_*/
+outputs/renew_*.tar.gz*
+renew_resnet*.log
+renew_resnet*_results.tar.gz*
+
 # IDE
 .idea/
 .vscode/
