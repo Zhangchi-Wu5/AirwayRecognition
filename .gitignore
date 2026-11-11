@@ -41,6 +41,7 @@ outputs/renew_*/
 outputs/renew_*.tar.gz*
 renew_resnet*.log
 renew_resnet*_results.tar.gz*
+renew_patient_relation*.log
 
 # IDE
 .idea/
