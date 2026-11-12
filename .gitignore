@@ -43,6 +43,7 @@ renew_resnet*.log
 renew_resnet*_results.tar.gz*
 renew_patient_relation*.log
 renew_frozen_screen*.log
+renew_frozen_linear*.log
 
 # IDE
 .idea/
